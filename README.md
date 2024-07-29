@@ -1,1 +1,1 @@
-# UAGNN
+# UQGNN

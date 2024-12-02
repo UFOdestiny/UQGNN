@@ -55,7 +55,7 @@ class UQGNN(BaseModel):
         self.idx_diag = list(range(self.feature))
 
         self.output2 = GaussianNorm(Ko, blocks[-3][-1], blocks[-2], (feature + 1) * feature // 2, self.node_num)
-        self.min_vec = 1e-2
+        self.min_vec = 1e-4
         self.horizon = horizon
 
 
@@ -78,7 +78,7 @@ class UQGNN(BaseModel):
         sigma = self.output2(x).transpose(2, 3)
 
         mu = F.softplus(mu)
-        sigma = F.sigmoid(sigma)
+        sigma = F.softplus(sigma)
 
         shape_s = sigma.shape
         z = torch.zeros(shape_s[0], shape_s[1], shape_s[2], self.feature, self.feature).to(device=sigma.device)
@@ -87,7 +87,6 @@ class UQGNN(BaseModel):
 
         eigval, eigvec = torch.linalg.eigh(z)
         adjusted_eigval = torch.clamp(eigval, min=self.min_vec)
-
         step1 = torch.matmul(eigvec, torch.diag_embed(adjusted_eigval))
         pd_matrix = torch.matmul(step1, eigvec.transpose(-2, -1))
 

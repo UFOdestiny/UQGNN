@@ -5,6 +5,31 @@ from torch.distributions.laplace import Laplace
 from torch.distributions.log_normal import LogNormal
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.normal import Normal
+import torch.distributions as dist
+
+class MNB:
+    def __init__(self, mu, r):
+        self.mu = mu
+        self.r = r
+        # Broadcast r if it has a lower dimensionality
+        self.r = r.expand_as(mu) if r.shape != mu.shape else r
+
+    def sample(self):
+        # Step 1: Generate Gamma random variables for the Poisson rate parameter
+        gamma_rate = dist.Gamma(self.r, self.r / self.mu).sample()
+        # Step 2: Generate Poisson samples with the Gamma random rates
+        poisson_samples = dist.Poisson(gamma_rate).sample()
+        return poisson_samples
+
+    def log_prob(self, counts):
+        # Compute the log-probability for each feature
+        term1 = torch.lgamma(counts + self.r) - torch.lgamma(self.r) - torch.lgamma(counts + 1)
+        term2 = self.r * torch.log(self.r) + counts * torch.log(self.mu)
+        term3 = -(counts + self.r) * torch.log(self.r + self.mu)
+        log_prob = term1 + term2 + term3
+        # Sum over features for each (batch, N) pair
+        return log_prob
+
 
 
 def masked_mse(preds, labels, null_val, preserve=False):
@@ -55,7 +80,7 @@ def masked_mape(preds, labels, null_val, preserve=False):
     mask = mask.float()
     mask /= torch.mean(mask)
     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
-    loss = 100*torch.abs(preds - labels) / labels
+    loss = torch.abs(preds - labels) / labels
     loss = loss * mask
     loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
     if preserve:
@@ -96,7 +121,7 @@ def masked_mpiw(preds, labels, null_val, preserve=False):
     m, v = preds
     if v.shape != m.shape:
         v = torch.diagonal(v, dim1=-2, dim2=-1)
-    loss = 1.96 * v / (16 ** 0.5)
+    loss = 2 * 1.96 * v  # / (12 ** 0.5)
     # print(loss.shape,mask.shape)
     loss = loss * mask
     loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
@@ -285,7 +310,8 @@ def mnormal_loss(preds, labels, null_val):
     return loss
 
 
-def normal_loss(preds, labels, null_val):
+
+def mnormal_loss(preds, labels, null_val):
     if torch.isnan(null_val):
         mask = ~torch.isnan(labels)
     else:
@@ -295,7 +321,29 @@ def normal_loss(preds, labels, null_val):
     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
 
     loc, scale = preds
-    d = Normal(loc, scale)
+
+    dis = MultivariateNormal(loc=loc, covariance_matrix=scale)
+    loss = dis.log_prob(labels)
+
+    if loss.shape == mask.shape:
+        loss = loss * mask
+        loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
+
+    loss = -torch.sum(loss)
+    return loss
+
+
+def mnb_loss(preds, labels, null_val):
+    if torch.isnan(null_val):
+        mask = ~torch.isnan(labels)
+    else:
+        mask = (labels != null_val)
+    mask = mask.float()
+    mask /= torch.mean(mask)
+    mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
+
+    loc, scale = preds
+    d = MNB(loc, scale)
     loss = d.log_prob(labels)
 
     loss = loss * mask

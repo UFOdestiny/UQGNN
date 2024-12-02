@@ -8,6 +8,9 @@ import threading
 import numpy as np
 import torch
 
+from data.generate_data_for_training import StandardScaler
+from src.utils.args import get_data_path
+
 sys.path.append(os.path.abspath(__file__ + '/../../..'))
 
 
@@ -80,29 +83,6 @@ class DataLoader(object):
         return _wrapper()
 
 
-class StandardScaler:
-    def __init__(self, mean, std):
-        self.mean = torch.tensor(mean)
-        self.std = torch.tensor(std)
-
-    def transform(self, data):
-        return (data - self.mean) / self.std
-
-    def inverse_transform(self, data):
-        return (data * self.std.to(device="cuda")) + self.mean.to(device="cuda")
-
-
-class RatioScaler:
-    def __init__(self, ratio=1000):
-        self.ratio = torch.tensor(ratio)
-
-    def transform(self, data):
-        return data / self.ratio
-
-    def inverse_transform(self, data):
-        return data * self.ratio.to(device="cuda")
-
-
 def load_dataset(data_path, args, logger):
     ptr = np.load(os.path.join(data_path, args.years, 'his.npz'))
     logger.info('Data shape: ' + str(ptr["data"].shape))
@@ -113,8 +93,8 @@ def load_dataset(data_path, args, logger):
         dataloader[cat + '_loader'] = DataLoader(ptr['data'][..., :args.input_dim], idx, args.seq_len, args.horizon,
                                                  args.bs, logger)
 
-    # scaler = StandardScaler(mean=ptr['mean'], std=ptr['std'])
-    return dataloader, RatioScaler()
+    scaler = StandardScaler(mean=ptr['mean'], std=ptr['std'],offset=ptr['offset'])
+    return dataloader, scaler
 
 
 def load_adj_from_pickle(pickle_file):
@@ -137,18 +117,19 @@ def load_adj_from_numpy(numpy_file):
 def get_dataset_info(dataset):
     # base_dir = os.getcwd() + '/data/'
 
-    base_dir = ""
-    if platform.system().lower() == 'linux':
-        base_dir = ""
+    base_dir = get_data_path()
 
     d = {
-        # 'CA': [base_dir + 'ca', base_dir + 'ca/ca_rn_adj.npy', 8600],
-        # 'GLA': [base_dir + 'gla', base_dir + 'gla/gla_rn_adj.npy', 3834],
-        # 'GBA': [base_dir + 'gba', base_dir + 'gba/gba_rn_adj.npy', 2352],
-        # 'SD': [base_dir + 'sd', base_dir + 'sd/sd_rn_adj.npy', 716],
+        'CA': [base_dir + 'ca', base_dir + 'ca/ca_rn_adj.npy', 8600],
+        'GLA': [base_dir + 'gla', base_dir + 'gla/gla_rn_adj.npy', 3834],
+        'GBA': [base_dir + 'gba', base_dir + 'gba/gba_rn_adj.npy', 2352],
+        'SD': [base_dir + 'sd', base_dir + 'sd/sd_rn_adj.npy', 716],
         'Shenzhen': [base_dir + 'shenzhen', base_dir + 'shenzhen/adj.npy', 491],
         'Shenzhen2': [base_dir + 'shenzhen2', base_dir + 'shenzhen2/adj.npy', 491],
         'NYC': [base_dir + 'nyc', base_dir + 'nyc/adj.npy', 42],
+        'NYC_Crash': [base_dir + 'nyc_crash', base_dir + 'nyc_crash/adj.npy', 42],
+        'NYC_Combine': [base_dir + 'nyc_combine', base_dir + 'nyc_combine/adj.npy', 42],
+        'Chicago': [base_dir + 'chicago', base_dir + 'chicago/adj.npy', 77],
     }
 
     assert dataset in d.keys()

@@ -9,7 +9,7 @@ from src.utils.metrics import masked_mape
 from src.utils.metrics import masked_rmse
 
 
-class BaseEngine():
+class BaseEngine:
     def __init__(self, device, model, dataloader, scaler, sampler, loss_fn, lrate, optimizer, \
                  scheduler, clip_grad_value, max_epochs, patience, log_dir, logger, seed, normalize=True):
         super().__init__()

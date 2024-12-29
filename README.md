@@ -1,5 +1,4 @@
 # UQGNN
-The structure of codes and the primary process is based on  [LargeST](https://github.com/liuxu77/LargeST). 
 We conduct experiments on an Quad-Core 2.40GHz – Intel® Xeon X3220, 64 GB RAM linux computing server, equipped with an NVIDIA RTX A100 GPU with 16 GB memory. We adopt PyTorch 2.3.0 and CUDA 11.8 as the default deep learning library. 
 
 ## Baselines  

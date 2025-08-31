@@ -38,7 +38,7 @@ The probabilistic baselines are inplemented based on
 If you use this code, please cite the following paper:
 
 ```bibtex
-@article{yu2025uqgnn,
+@inproceedings{yu2025uqgnn,
   title={UQGNN: Uncertainty Quantification of Graph Neural Networks for Multivariate Spatiotemporal Prediction},
   author={Yu, Dahai and Zhuang, Dingyi and Jiang, Lin and Xu, Rongchao and Ye, Xinyue and Bu, Yuheng and Wang, Shenhao and Wang, Guang},
   journal={Proceedings of the 33nd ACM International Conference on Advances in Geographic Information Systems},
